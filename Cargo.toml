@@ -1,0 +1,12 @@
+[package]
+name = "dr_filter_engine"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.3.28"
+reqwest = "0.11.22"
+rss = "2.0.6"
+tokio = { version = "1.32.0", features = ["full"] }
