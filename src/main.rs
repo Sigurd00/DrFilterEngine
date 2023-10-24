@@ -39,9 +39,7 @@ async fn run() {
     let channels= join_all(contents).await;
     for channel in channels {
         if let Ok(channel) = channel {
-            for item in channel.items() {
-                println!("{:?}", item.description())
-            }
+            
         }
     }
 }
