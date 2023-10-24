@@ -36,5 +36,12 @@ async fn run() {
     for feed in feeds {
         contents.push(get_feed(feed));
     }
-    let contents = join_all(contents).await;
+    let channels= join_all(contents).await;
+    for channel in channels {
+        if let Ok(channel) = channel {
+            for item in channel.items() {
+                println!("{:?}", item.description())
+            }
+        }
+    }
 }
