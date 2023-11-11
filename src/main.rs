@@ -1,5 +1,4 @@
-use dr_filter_engine::rssfeed::get_feed;
-use futures::future::join_all;
+use dr_filter_engine::content_ingestion::ContentIngestion;
 
 #[tokio::main]
 async fn main() {
@@ -7,34 +6,31 @@ async fn main() {
 }
 
 async fn run() {
-    let feeds:Vec<&str> = vec![
-        "https://www.dr.dk/nyheder/service/feeds/senestenyt",
-        "https://www.dr.dk/nyheder/service/feeds/indland",
-        "https://www.dr.dk/nyheder/service/feeds/udland",
-        "https://www.dr.dk/nyheder/service/feeds/penge",
-        "https://www.dr.dk/nyheder/service/feeds/politik",
-        "https://www.dr.dk/nyheder/service/feeds/sporten",
-        "https://www.dr.dk/nyheder/service/feeds/senestesport",
-        "https://www.dr.dk/nyheder/service/feeds/viden",
-        "https://www.dr.dk/nyheder/service/feeds/kultur",
-        "https://www.dr.dk/nyheder/service/feeds/musik",
-        "https://www.dr.dk/nyheder/service/feeds/mitliv",
-        "https://www.dr.dk/nyheder/service/feeds/mad",
-        "https://www.dr.dk/nyheder/service/feeds/vejret",
-        "https://www.dr.dk/nyheder/service/feeds/regionale",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/kbh",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/bornholm",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/syd",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/fyn",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/vest",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/nord",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/trekanten",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/sjaelland",
-        "https://www.dr.dk/nyheder/service/feeds/regionale/oestjylland"
-    ];
-    let mut contents = vec![];
-    for feed in feeds {
-        contents.push(get_feed(feed));
-    }
-    let contents = join_all(contents).await;
+    let mut ingestion = ContentIngestion::new(vec![
+        "https://www.dr.dk/nyheder/service/feeds/senestenyt".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/indland".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/udland".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/penge".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/politik".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/sporten".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/senestesport".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/viden".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/kultur".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/musik".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/mitliv".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/mad".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/vejret".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/kbh".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/bornholm".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/syd".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/fyn".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/vest".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/nord".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/trekanten".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/sjaelland".to_string(),
+        "https://www.dr.dk/nyheder/service/feeds/regionale/oestjylland".to_string(),
+    ]);
+
+    let _new_articles = ingestion.fetch_all().await;
 }
