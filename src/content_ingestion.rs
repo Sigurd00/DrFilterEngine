@@ -22,13 +22,10 @@ impl ContentIngestion {
 
     /// Fetches all unique articles.
     pub async fn fetch_all(&mut self) -> &IndexSet<String> {
-        match self.last_fetched {
-            Some(last_fetched) => {
-                if Local::now() - last_fetched < Duration::minutes(30) {
-                    return &self.all_unique_articles;
-                }
+        if let Some(last_fetched) = self.last_fetched {
+            if Local::now() - last_fetched < Duration::minutes(30) {
+                return &self.all_unique_articles;
             }
-            None => todo!(),
         }
 
         for feed in &self.feeds.clone() {
