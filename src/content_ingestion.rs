@@ -3,10 +3,12 @@ use indexmap::IndexSet;
 use rss::Channel;
 use std::error::Error;
 
+use crate::article::Article;
+
 pub struct ContentIngestion {
     feeds: Vec<String>,
     last_fetched: Option<DateTime<Local>>,
-    all_unique_articles: IndexSet<String>,
+    all_unique_articles: IndexSet<Article>,
     should_update_last_fetched: bool,
 }
 
@@ -21,7 +23,7 @@ impl ContentIngestion {
     }
 
     /// Fetches all unique articles.
-    pub async fn fetch_all(&mut self) -> &IndexSet<String> {
+    pub async fn fetch_all(&mut self) -> &IndexSet<Article> {
         if let Some(last_fetched) = self.last_fetched {
             if Local::now() - last_fetched < Duration::minutes(30) {
                 return &self.all_unique_articles;
@@ -47,24 +49,34 @@ impl ContentIngestion {
     pub async fn fetch_newsarticles_from_feed(
         &mut self,
         feed: &str,
-    ) -> Result<Option<Vec<String>>, Box<dyn Error>> {
+    ) -> Result<Option<Vec<Article>>, Box<dyn Error>> {
         let content = reqwest::get(feed).await?.bytes().await?;
         let channel = Channel::read_from(&content[..])?;
 
-        let mut new_articles: Vec<String> = vec![];
+        let mut new_articles: Vec<Article> = vec![];
         for item in channel.items() {
             match DateTime::parse_from_rfc2822(item.pub_date().unwrap()) {
                 Ok(parsed_timestamp) => {
                     match self.last_fetched {
                         Some(last_fetched) => {
                             if parsed_timestamp < last_fetched {
-                                new_articles.push(item.link().unwrap().to_owned());
+                                new_articles.push(Article::new(
+                                    item.guid().unwrap().value.to_owned(),
+                                    item.link().unwrap().to_owned(),
+                                    None,
+                                    None,
+                                ));
                             }
                         }
                         //First time fetching in applications runtime 'self.last_fetched' will be None
                         //'self.last_fetched' is then set at the end.
                         None => {
-                            new_articles.push(item.link().unwrap().to_owned());
+                            new_articles.push(Article::new(
+                                item.guid().unwrap().value.to_owned(),
+                                item.link().unwrap().to_owned(),
+                                None,
+                                None,
+                            ));
                         }
                     }
                 }
@@ -83,8 +95,8 @@ impl ContentIngestion {
         }
     }
 
-    fn process_new_articles(&mut self, articles: Vec<String>) {
-        self.all_unique_articles.extend(articles);
+    fn process_new_articles(&mut self, articles: Vec<Article>) {
+        self.all_unique_articles.extend(articles)
     }
 
     fn update_last_fetched(&mut self) {
