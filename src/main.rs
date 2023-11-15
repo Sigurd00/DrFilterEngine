@@ -33,4 +33,5 @@ async fn run() {
     ]);
 
     let _new_articles = ingestion.fetch_all().await;
+    println!("Found {} unique articles", _new_articles.len());
 }

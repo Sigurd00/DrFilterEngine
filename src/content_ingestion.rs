@@ -95,6 +95,17 @@ impl ContentIngestion {
         }
     }
 
+    pub async fn scrape_articles(&mut self) -> Result<String, Box<dyn Error>> {
+        let response = reqwest::get("https://scrapeme.live/shop/").await;
+        let html_content = response.unwrap().text().await.unwrap();
+        let document = scraper::Html::parse_document(&html_content);
+
+        //TODO: Find out how to consistently scrape articles for their content
+        Ok("asdasd".to_string())
+    }
+
+    
+
     fn process_new_articles(&mut self, articles: Vec<Article>) {
         self.all_unique_articles.extend(articles)
     }
@@ -106,4 +117,22 @@ impl ContentIngestion {
             self.should_update_last_fetched = false;
         }
     }
+}
+
+async fn concurrent_fetch_multiple_urls(urls: &[&str])  {
+    let futures = urls.iter().map(|&url| fetch_url(url));
+    let results = futures::future::join_all(futures).await;
+
+    for result in results {
+        if let Err(e) = result {
+            eprintln!("Error: {:?}", e);
+        }
+    }
+}
+
+async fn fetch_url(url: &str) -> Result<(), reqwest::Error> {
+    let response = reqwest::get(url).await?;
+    // Process response here, for example, print the status code
+    println!("Status for {}: {}", url, response.status());
+    Ok(())
 }
