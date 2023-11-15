@@ -114,15 +114,12 @@ impl ContentIngestion {
     }
 
     pub async fn scrape_articles(&mut self) -> Result<String, Box<dyn Error>> {
-        //TODO: Associate the links with their response. Associate the links with their article. 
+        //TODO: Associate the links with their response. Associate the links with their article.
         //In this way we can associate the article with their response
-        let links: Vec<&str> = self
-            .all_unique_articles
-            .iter()
-            .map(|article| article.link())
-            .collect();
 
-        let responses = self.concurrent_fetch_multiple_urls(&links).await;
+        let responses = self
+            .concurrent_fetch_multiple_articles_content(&self.all_unique_articles)
+            .await;
 
         for response in responses {
             match response {
@@ -149,12 +146,17 @@ impl ContentIngestion {
         Ok("123".to_owned())
     }
 
-    async fn concurrent_fetch_multiple_urls(
+    async fn concurrent_fetch_multiple_articles_content<'a, T>(
         &self,
-        urls: &[&str],
-    ) -> Vec<Result<reqwest::Response, RequestOrTimeoutError>> {
+        articles: T,
+    ) -> Vec<Result<reqwest::Response, RequestOrTimeoutError>>
+    where
+        T: IntoIterator<Item = &'a Article>,
+    {
         //TODO: implementer chunking. Måske implementer det i scrape_articles
-        let futures = urls.iter().map(|&url| self.fetch_url(url));
+        let futures = articles
+            .into_iter()
+            .map(|article| self.fetch_url(article.link()));
         let results = futures::future::join_all(futures).await;
         println!("{}", results.len());
         results
