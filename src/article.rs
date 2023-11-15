@@ -21,6 +21,17 @@ impl Article {
             identified_keywords,
         }
     }
+    pub fn link(&self) -> &str {
+        &self.link
+    }
+
+    pub fn content(&self) -> Option<&String> {
+        self.content.as_ref()
+    }
+
+    pub fn identified_keywords(&self) -> Option<&Vec<String>> {
+        self.identified_keywords.as_ref()
+    }
 }
 
 impl Eq for Article {}

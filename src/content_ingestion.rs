@@ -1,15 +1,32 @@
 use chrono::{DateTime, Duration, Local};
 use indexmap::IndexSet;
+use reqwest::{Error as ReqwestError, Response};
 use rss::Channel;
-use std::error::Error;
+use std::{error::Error, fmt};
+use tokio::time::{error::Elapsed, timeout};
 
 use crate::article::Article;
+
+enum RequestOrTimeoutError {
+    ReqwestError(ReqwestError),
+    TimeoutError(Elapsed),
+}
+
+impl fmt::Display for RequestOrTimeoutError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RequestOrTimeoutError::ReqwestError(err) => write!(f, "Reqwest error: {}", err),
+            RequestOrTimeoutError::TimeoutError(_) => write!(f, "Request timed out"),
+        }
+    }
+}
 
 pub struct ContentIngestion {
     feeds: Vec<String>,
     last_fetched: Option<DateTime<Local>>,
     all_unique_articles: IndexSet<Article>,
     should_update_last_fetched: bool,
+    client: reqwest::Client,
 }
 
 impl ContentIngestion {
@@ -19,6 +36,7 @@ impl ContentIngestion {
             last_fetched: None,
             all_unique_articles: IndexSet::new(),
             should_update_last_fetched: true,
+            client: reqwest::Client::new(),
         }
     }
 
@@ -96,15 +114,63 @@ impl ContentIngestion {
     }
 
     pub async fn scrape_articles(&mut self) -> Result<String, Box<dyn Error>> {
-        let response = reqwest::get("https://scrapeme.live/shop/").await;
-        let html_content = response.unwrap().text().await.unwrap();
-        let document = scraper::Html::parse_document(&html_content);
+        //TODO: Associate the links with their response. Associate the links with their article. 
+        //In this way we can associate the article with their response
+        let links: Vec<&str> = self
+            .all_unique_articles
+            .iter()
+            .map(|article| article.link())
+            .collect();
 
-        //TODO: Find out how to consistently scrape articles for their content
-        Ok("asdasd".to_string())
+        let responses = self.concurrent_fetch_multiple_urls(&links).await;
+
+        for response in responses {
+            match response {
+                Ok(response) => {
+                    match response.text().await {
+                        Ok(html) => {
+                            let _document = scraper::Html::parse_document(&html);
+                            println!("Parsed the html response")
+                        }
+                        Err(err) => {
+                            // Handle error when retrieving text
+                            println!("Error reading response: {}", err);
+                        }
+                    }
+                }
+                Err(error) => {
+                    // TODO: Handle error in fetching URL. The article should be retried i guess.
+                    println!("Error fetching URL: {}", error);
+                }
+            }
+        }
+        println!("done");
+
+        Ok("123".to_owned())
     }
 
-    
+    async fn concurrent_fetch_multiple_urls(
+        &self,
+        urls: &[&str],
+    ) -> Vec<Result<reqwest::Response, RequestOrTimeoutError>> {
+        //TODO: implementer chunking. Måske implementer det i scrape_articles
+        let futures = urls.iter().map(|&url| self.fetch_url(url));
+        let results = futures::future::join_all(futures).await;
+        println!("{}", results.len());
+        results
+    }
+
+    async fn fetch_url(&self, url: &str) -> Result<Response, RequestOrTimeoutError> {
+        let timeout_duration = std::time::Duration::from_secs(10);
+        let response = timeout(timeout_duration, self.client.get(url).send()).await;
+        match response {
+            Ok(result) => match result {
+                Ok(res) => Ok(res),
+                Err(err) => Err(RequestOrTimeoutError::ReqwestError(err)),
+            },
+            Err(error) => Err(RequestOrTimeoutError::TimeoutError(error)),
+        }
+    }
 
     fn process_new_articles(&mut self, articles: Vec<Article>) {
         self.all_unique_articles.extend(articles)
@@ -117,22 +183,4 @@ impl ContentIngestion {
             self.should_update_last_fetched = false;
         }
     }
-}
-
-async fn concurrent_fetch_multiple_urls(urls: &[&str])  {
-    let futures = urls.iter().map(|&url| fetch_url(url));
-    let results = futures::future::join_all(futures).await;
-
-    for result in results {
-        if let Err(e) = result {
-            eprintln!("Error: {:?}", e);
-        }
-    }
-}
-
-async fn fetch_url(url: &str) -> Result<(), reqwest::Error> {
-    let response = reqwest::get(url).await?;
-    // Process response here, for example, print the status code
-    println!("Status for {}: {}", url, response.status());
-    Ok(())
 }
