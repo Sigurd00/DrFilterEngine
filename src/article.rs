@@ -1,5 +1,10 @@
 use std::hash::{Hash, Hasher};
 
+use reqwest::Response;
+use tokio::time::timeout;
+
+use crate::content_ingestion::RequestOrTimeoutError;
+
 pub struct Article {
     uuid: String,
     link: String,
@@ -31,6 +36,18 @@ impl Article {
 
     pub fn identified_keywords(&self) -> Option<&Vec<String>> {
         self.identified_keywords.as_ref()
+    }
+
+    pub async fn fetch_url(&self, client: &reqwest::Client) -> Result<Response, RequestOrTimeoutError> {
+        let timeout_duration = std::time::Duration::from_secs(10);
+        let response = timeout(timeout_duration, client.get(url).send()).await;
+        match response {
+            Ok(result) => match result {
+                Ok(res) => Ok(res),
+                Err(err) => Err(RequestOrTimeoutError::ReqwestError(err)),
+            },
+            Err(error) => Err(RequestOrTimeoutError::TimeoutError(error)),
+        }
     }
 }
 

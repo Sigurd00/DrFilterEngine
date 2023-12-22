@@ -7,7 +7,7 @@ use tokio::time::{error::Elapsed, timeout};
 
 use crate::article::Article;
 
-enum RequestOrTimeoutError {
+pub enum RequestOrTimeoutError {
     ReqwestError(ReqwestError),
     TimeoutError(Elapsed),
 }
@@ -147,8 +147,8 @@ impl ContentIngestion {
     }
 
     async fn concurrent_fetch_multiple_articles_content<'a, T>(
-        &self,
-        articles: T,
+        &mut self,
+        mut articles: T,
     ) -> Vec<Result<reqwest::Response, RequestOrTimeoutError>>
     where
         T: IntoIterator<Item = &'a Article>,
@@ -156,22 +156,10 @@ impl ContentIngestion {
         //TODO: implementer chunking. Måske implementer det i scrape_articles
         let futures = articles
             .into_iter()
-            .map(|article| self.fetch_url(article.link()));
+            .map(|article| article.fetch_url(&self.client));
         let results = futures::future::join_all(futures).await;
         println!("{}", results.len());
         results
-    }
-
-    async fn fetch_url(&self, url: &str) -> Result<Response, RequestOrTimeoutError> {
-        let timeout_duration = std::time::Duration::from_secs(10);
-        let response = timeout(timeout_duration, self.client.get(url).send()).await;
-        match response {
-            Ok(result) => match result {
-                Ok(res) => Ok(res),
-                Err(err) => Err(RequestOrTimeoutError::ReqwestError(err)),
-            },
-            Err(error) => Err(RequestOrTimeoutError::TimeoutError(error)),
-        }
     }
 
     fn process_new_articles(&mut self, articles: Vec<Article>) {
